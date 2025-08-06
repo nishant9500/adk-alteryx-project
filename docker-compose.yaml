@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  adk-app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - GOOGLE_API_KEY=your_api_key_here
