@@ -52,12 +52,11 @@ else:
 # --- Define XMLConverterAgent ---
 # This agent handles the core logic for XML to SQL conversion
 class XMLConverterAgent(Agent): # Changed to inherit from Agent
-    def __init__(self, **kwargs):
+    def __init__(self): # Removed **kwargs
         # Pass name and description directly to super().__init__
         super().__init__(
             name="XMLConverterAgent",
             description="Specialized agent for validating, parsing Alteryx XML, and converting it to BigQuery SQL."
-            # Removed **kwargs from super() call as it might contain unexpected args for Agent base class
         )
         # Conditionally pass project/location to GenerativeModel
         model_args = {}
@@ -129,12 +128,11 @@ class XMLConverterAgent(Agent): # Changed to inherit from Agent
 # --- Define ChatbotAgent ---
 # This agent is the user-facing interface and orchestrates the call to XMLConverterAgent.
 class ChatbotAgent(Agent): # Changed to inherit from Agent
-    def __init__(self, **kwargs):
+    def __init__(self): # Removed **kwargs
         # Pass name and description directly to super().__init__
         super().__init__(
             name="ChatbotAgent",
             description="A friendly chatbot for general conversations and initiating Alteryx XML to BigQuery SQL conversions."
-            # Removed **kwargs from super() call as it might contain unexpected args for Agent base class
         )
         # Conditionally pass project/location to GenerativeModel
         model_args = {}
