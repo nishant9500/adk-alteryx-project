@@ -20,7 +20,8 @@ except ImportError as e:
     logger.error("The ADK Web UI will not be available. Please verify your 'google-adk' installation.")
 
 # Import other necessary ADK components and Gemini configuration
-from google.adk.agents import LlmAgent, tool
+from google.adk.agents import LlmAgent
+from google.adk.tools import tool # Changed: Import 'tool' from google.adk.tools
 from google.generativeai import GenerativeModel, configure as configure_gemini
 
 # Load environment variables from .env file
@@ -188,4 +189,3 @@ if __name__ == "__main__":
         logger.info("\nADK Web UI stopped by user (KeyboardInterrupt).")
     except Exception as e:
         logger.exception(f"An unhandled error occurred: {e}")
-
