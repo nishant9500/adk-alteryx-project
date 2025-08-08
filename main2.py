@@ -21,37 +21,45 @@ except ImportError as e:
 
 # Import other necessary ADK components and Gemini configuration
 from google.adk.agents import LlmAgent
-# Removed: from google.adk.tools import tool # This line caused the error
 from google.generativeai import GenerativeModel, configure as configure_gemini
 
 # Load environment variables from .env file
 load_dotenv()
 
-# --- Configure Gemini ---
-# Prioritize Vertex AI configuration if specified in .env
-if os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "FALSE").lower() == "true":
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-    location = os.getenv("GOOGLE_CLOUD_LOCATION")
-    if not project_id or not location:
-        logger.error("GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_LOCATION not set in .env for Vertex AI.")
-        sys.exit(1)
-    configure_gemini(project=project_id, location=location)
-    logger.info(f"Gemini configured for Vertex AI: Project={project_id}, Location={location}")
-else:
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
+# --- Global Gemini Configuration Parameters ---
+# These will be used when instantiating GenerativeModel
+GEMINI_MODEL_NAME = "gemini-2.0-flash"
+USE_VERTEX_AI = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "FALSE").lower() == "true"
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION")
+API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# --- Configure Gemini (only for API Key, Vertex AI config handled in GenerativeModel constructor) ---
+if not USE_VERTEX_AI:
+    if not API_KEY:
         logger.error("GOOGLE_API_KEY not set in .env. Please provide your Gemini API key.")
         sys.exit(1)
-    configure_gemini(api_key=api_key)
+    configure_gemini(api_key=API_KEY)
     logger.info("Gemini configured using API Key (not Vertex AI).")
+else:
+    if not PROJECT_ID or not LOCATION:
+        logger.error("GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_LOCATION not set in .env for Vertex AI.")
+        sys.exit(1)
+    logger.info(f"Gemini will be configured for Vertex AI in GenerativeModel constructors: Project={PROJECT_ID}, Location={LOCATION}")
 
 
 # --- Define XMLConverterAgent ---
 # This agent handles the core logic for XML to SQL conversion
 class XMLConverterAgent(LlmAgent):
     def __init__(self, **kwargs):
+        # Conditionally pass project/location to GenerativeModel
+        model_args = {}
+        if USE_VERTEX_AI:
+            model_args['project'] = PROJECT_ID
+            model_args['location'] = LOCATION
+
         super().__init__(
-            model=GenerativeModel("gemini-2.0-flash"), # Using gemini-2.0-flash as requested
+            model=GenerativeModel(GEMINI_MODEL_NAME, **model_args),
             name="XMLConverterAgent",
             description="Specialized agent for validating, parsing Alteryx XML, and converting it to BigQuery SQL.",
             **kwargs
@@ -120,18 +128,22 @@ class XMLConverterAgent(LlmAgent):
 # This agent is the user-facing interface and orchestrates the call to XMLConverterAgent.
 class ChatbotAgent(LlmAgent):
     def __init__(self, **kwargs):
+        # Conditionally pass project/location to GenerativeModel
+        model_args = {}
+        if USE_VERTEX_AI:
+            model_args['project'] = PROJECT_ID
+            model_args['location'] = LOCATION
+
         super().__init__(
-            model=GenerativeModel("gemini-2.0-flash"), # Using gemini-2.0-flash as requested
+            model=GenerativeModel(GEMINI_MODEL_NAME, **model_args),
             name="ChatbotAgent",
             description="A friendly chatbot for general conversations and initiating Alteryx XML to BigQuery SQL conversions.",
             **kwargs
         )
         # Register the tool that calls the XMLConverterAgent
-        # Changed: Removed @tool decorator, added function directly
         self.add_tool(self.convert_alteryx_to_sql_tool) 
         logger.info("ChatbotAgent initialized.")
 
-    # Removed: @tool decorator
     async def convert_alteryx_to_sql_tool(self, alteryx_xml_code: str) -> str:
         """
         Converts Alteryx XML backend code to BigQuery SQL.
