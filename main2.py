@@ -3,6 +3,7 @@ import os
 import sys
 from dotenv import load_dotenv
 import logging
+import re # Added for simple XML detection
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,8 +20,8 @@ except ImportError as e:
     logger.error("This often means 'google-adk' is not fully installed or its components are missing.")
     logger.error("The ADK Web UI will not be available. Please verify your 'google-adk' installation.")
 
-# Import other necessary ADK components and Gemini configuration
-from google.adk.agents import LlmAgent
+# Import only 'Agent' as requested
+from google.adk.agents import Agent # Changed from LlmAgent
 from google.generativeai import GenerativeModel, configure as configure_gemini
 
 # Load environment variables from .env file
@@ -50,20 +51,20 @@ else:
 
 # --- Define XMLConverterAgent ---
 # This agent handles the core logic for XML to SQL conversion
-class XMLConverterAgent(LlmAgent):
+class XMLConverterAgent(Agent): # Changed to inherit from Agent
     def __init__(self, **kwargs):
+        super().__init__(
+            name="XMLConverterAgent",
+            description="Specialized agent for validating, parsing Alteryx XML, and converting it to BigQuery SQL.",
+            **kwargs
+        )
         # Conditionally pass project/location to GenerativeModel
         model_args = {}
         if USE_VERTEX_AI:
             model_args['project'] = PROJECT_ID
             model_args['location'] = LOCATION
 
-        super().__init__(
-            model=GenerativeModel(GEMINI_MODEL_NAME, **model_args),
-            name="XMLConverterAgent",
-            description="Specialized agent for validating, parsing Alteryx XML, and converting it to BigQuery SQL.",
-            **kwargs
-        )
+        self.model = GenerativeModel(GEMINI_MODEL_NAME, **model_args)
         logger.info("XMLConverterAgent initialized.")
 
     async def process_alteryx_xml_to_sql(self, xml_code: str) -> str:
@@ -126,28 +127,55 @@ class XMLConverterAgent(LlmAgent):
 
 # --- Define ChatbotAgent ---
 # This agent is the user-facing interface and orchestrates the call to XMLConverterAgent.
-class ChatbotAgent(LlmAgent):
+class ChatbotAgent(Agent): # Changed to inherit from Agent
     def __init__(self, **kwargs):
+        super().__init__(
+            name="ChatbotAgent",
+            description="A friendly chatbot for general conversations and initiating Alteryx XML to BigQuery SQL conversions.",
+            **kwargs
+        )
         # Conditionally pass project/location to GenerativeModel
         model_args = {}
         if USE_VERTEX_AI:
             model_args['project'] = PROJECT_ID
             model_args['location'] = LOCATION
 
-        super().__init__(
-            model=GenerativeModel(GEMINI_MODEL_NAME, **model_args),
-            name="ChatbotAgent",
-            description="A friendly chatbot for general conversations and initiating Alteryx XML to BigQuery SQL conversions.",
-            **kwargs
-        )
-        # Register the tool that calls the XMLConverterAgent
-        self.add_tool(self.convert_alteryx_to_sql_tool) 
+        self.model = GenerativeModel(GEMINI_MODEL_NAME, **model_args)
         logger.info("ChatbotAgent initialized.")
+
+        # Register the tool that calls the XMLConverterAgent
+        # Note: With Agent (not LlmAgent), tool calling needs to be explicitly managed in the run method
+        self.add_tool(self.convert_alteryx_to_sql_tool) 
+
+    async def run(self, context): # Agent's run method
+        user_message = context.get_message_text()
+        logger.info(f"ChatbotAgent received message: {user_message}")
+
+        # Manual detection of Alteryx XML to trigger the tool
+        # In a real application, this regex might need to be more robust
+        if re.search(r'<AlteryxWorkflow>', user_message, re.IGNORECASE):
+            logger.info("ChatbotAgent detected Alteryx XML. Calling conversion tool.")
+            try:
+                # Explicitly call the tool method
+                sql_result = await self.convert_alteryx_to_sql_tool(alteryx_xml_code=user_message)
+                return f"XML conversion initiated. Result:\n```sql\n{sql_result}\n```"
+            except Exception as e:
+                logger.error(f"ChatbotAgent: Error during tool call: {e}")
+                return f"Sorry, I had trouble processing the XML conversion: {e}"
+        else:
+            logger.info("ChatbotAgent handling general query with LLM.")
+            # Use the LLM for general chat
+            try:
+                response = await self.model.generate_content_async(user_message)
+                return response.text.strip()
+            except Exception as e:
+                logger.error(f"ChatbotAgent: Error generating general response: {e}")
+                return f"Sorry, I'm having trouble responding right now."
 
     async def convert_alteryx_to_sql_tool(self, alteryx_xml_code: str) -> str:
         """
         Converts Alteryx XML backend code to BigQuery SQL.
-        This tool should be called by the ChatbotAgent when the user provides Alteryx XML.
+        This tool is called by the ChatbotAgent when the user provides Alteryx XML.
         Args:
             alteryx_xml_code: The Alteryx XML backend code string.
         Returns:
@@ -157,7 +185,11 @@ class ChatbotAgent(LlmAgent):
         
         # Instantiate the XMLConverterAgent and call its processing method directly.
         # In a distributed A2A setup, this would involve HTTP calls via A2AClient.
-        converter_agent = XMLConverterAgent() 
+        converter_agent = XMLConverterAgent(
+            project_id=PROJECT_ID,
+            location=LOCATION,
+            api_key=API_KEY # This will be None if USE_VERTEX_AI is True, which is fine
+        ) 
         try:
             result = await converter_agent.process_alteryx_xml_to_sql(alteryx_xml_code)
             logger.info("ChatbotAgent: Received result from XMLConverterAgent.")
