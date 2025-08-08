@@ -41,8 +41,12 @@ if USE_VERTEX_AI:
     if not PROJECT_ID or not LOCATION:
         logger.error("GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_LOCATION not set in .env for Vertex AI.")
         sys.exit(1)
-    configure_gemini(project=PROJECT_ID, location=LOCATION)
-    logger.info(f"Gemini configured globally for Vertex AI: Project={PROJECT_ID}, Location={LOCATION}")
+    # When using Vertex AI, configure_gemini is typically called without project/location
+    # as these are picked up from the environment (e.g., gcloud auth application-default login)
+    # or passed directly to GenerativeModel if an older library version requires it.
+    # For current versions, just ensuring the environment is authenticated is key.
+    configure_gemini() # Removed project=PROJECT_ID, location=LOCATION
+    logger.info(f"Gemini configured globally for Vertex AI. Ensure 'gcloud auth application-default login' is run for Project={PROJECT_ID}, Location={LOCATION}")
 else:
     if not API_KEY:
         logger.error("GOOGLE_API_KEY not set in .env. Please provide your Gemini API key.")
