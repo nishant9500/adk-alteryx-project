@@ -1,0 +1,4 @@
+google-adk
+google-cloud-aiplatform
+python-dotenv
+lxml # Or defusedxml for safer XML parsing
