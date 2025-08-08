@@ -28,25 +28,27 @@ from google.generativeai import GenerativeModel, configure as configure_gemini
 load_dotenv()
 
 # --- Global Gemini Configuration Parameters ---
-# These will be used when instantiating GenerativeModel
+# These will be used for configuring GenerativeModel globally or in its constructor
 GEMINI_MODEL_NAME = "gemini-2.0-flash"
 USE_VERTEX_AI = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "FALSE").lower() == "true"
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION")
 API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# --- Configure Gemini (only for API Key, Vertex AI config handled in GenerativeModel constructor) ---
-if not USE_VERTEX_AI:
+# --- Configure Gemini Globally ---
+# This is the correct way to set project/location for Vertex AI with google-generativeai
+if USE_VERTEX_AI:
+    if not PROJECT_ID or not LOCATION:
+        logger.error("GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_LOCATION not set in .env for Vertex AI.")
+        sys.exit(1)
+    configure_gemini(project=PROJECT_ID, location=LOCATION)
+    logger.info(f"Gemini configured globally for Vertex AI: Project={PROJECT_ID}, Location={LOCATION}")
+else:
     if not API_KEY:
         logger.error("GOOGLE_API_KEY not set in .env. Please provide your Gemini API key.")
         sys.exit(1)
     configure_gemini(api_key=API_KEY)
-    logger.info("Gemini configured using API Key (not Vertex AI).")
-else:
-    if not PROJECT_ID or not LOCATION:
-        logger.error("GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_LOCATION not set in .env for Vertex AI.")
-        sys.exit(1)
-    logger.info(f"Gemini will be configured for Vertex AI in GenerativeModel constructors: Project={PROJECT_ID}, Location={LOCATION}")
+    logger.info("Gemini configured globally using API Key (not Vertex AI).")
 
 
 # --- Define XMLConverterAgent ---
@@ -58,13 +60,8 @@ class XMLConverterAgent(Agent): # Changed to inherit from Agent
             name="XMLConverterAgent",
             description="Specialized agent for validating, parsing Alteryx XML, and converting it to BigQuery SQL."
         )
-        # Conditionally pass project/location to GenerativeModel
-        model_args = {}
-        if USE_VERTEX_AI:
-            model_args['project'] = PROJECT_ID
-            model_args['location'] = LOCATION
-
-        self.model = GenerativeModel(GEMINI_MODEL_NAME, **model_args)
+        # GenerativeModel now relies on the global configuration set by configure_gemini
+        self.model = GenerativeModel(GEMINI_MODEL_NAME)
         logger.info("XMLConverterAgent initialized.")
 
     async def process_alteryx_xml_to_sql(self, xml_code: str) -> str:
@@ -134,13 +131,8 @@ class ChatbotAgent(Agent): # Changed to inherit from Agent
             name="ChatbotAgent",
             description="A friendly chatbot for general conversations and initiating Alteryx XML to BigQuery SQL conversions."
         )
-        # Conditionally pass project/location to GenerativeModel
-        model_args = {}
-        if USE_VERTEX_AI:
-            model_args['project'] = PROJECT_ID
-            model_args['location'] = LOCATION
-
-        self.model = GenerativeModel(GEMINI_MODEL_NAME, **model_args)
+        # GenerativeModel now relies on the global configuration set by configure_gemini
+        self.model = GenerativeModel(GEMINI_MODEL_NAME)
         logger.info("ChatbotAgent initialized.")
 
         # Register the tool that calls the XMLConverterAgent
@@ -183,8 +175,7 @@ class ChatbotAgent(Agent): # Changed to inherit from Agent
         """
         logger.info(f"ChatbotAgent: User requested XML conversion. Passing to XMLConverterAgent...")
         
-        # Instantiate the XMLConverterAgent without passing project_id, location, api_key
-        # as its __init__ method now correctly derives them from global variables.
+        # Instantiate the XMLConverterAgent. It will use the globally configured Gemini settings.
         converter_agent = XMLConverterAgent() 
         try:
             result = await converter_agent.process_alteryx_xml_to_sql(alteryx_xml_code)
