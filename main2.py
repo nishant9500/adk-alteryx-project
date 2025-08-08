@@ -21,7 +21,7 @@ except ImportError as e:
 
 # Import other necessary ADK components and Gemini configuration
 from google.adk.agents import LlmAgent
-from google.adk.tools import tool # Changed: Import 'tool' from google.adk.tools
+# Removed: from google.adk.tools import tool # This line caused the error
 from google.generativeai import GenerativeModel, configure as configure_gemini
 
 # Load environment variables from .env file
@@ -127,10 +127,11 @@ class ChatbotAgent(LlmAgent):
             **kwargs
         )
         # Register the tool that calls the XMLConverterAgent
+        # Changed: Removed @tool decorator, added function directly
         self.add_tool(self.convert_alteryx_to_sql_tool) 
         logger.info("ChatbotAgent initialized.")
 
-    @tool
+    # Removed: @tool decorator
     async def convert_alteryx_to_sql_tool(self, alteryx_xml_code: str) -> str:
         """
         Converts Alteryx XML backend code to BigQuery SQL.
