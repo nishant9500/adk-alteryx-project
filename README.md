@@ -6,20 +6,11 @@ This project deploys a Flask app using Google Cloud's Gemini 2.0 Flash models in
 - Validator agent checks Alteryx XML.
 - SQL Generator agent converts valid XML into BigQuery SQL.
 
-## Setup
-
-### 1. Build & Run (locally or on GCP VM)
-```bash
-docker-compose up --build
-```
-
-### 2. Access
-Visit: `http://<your-vm-ip>:8080`
-
-### 3. Chat Endpoint
-POST to `/chat` with:
-```json
-{
-  "message": "<AlteryxWorkflow></AlteryxWorkflow>"
-}
-```
+your-adk-project/
+├── main.py
+├── requirements.txt
+├── .env
+└── agents/
+    ├── __init__.py
+    ├── chatbot_agent.py
+    └── xml_converter_agent.py
