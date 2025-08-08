@@ -14,3 +14,9 @@ your-adk-project/
     ├── __init__.py
     ├── chatbot_agent.py
     └── xml_converter_agent.py
+
+
+#how to use requirements
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
