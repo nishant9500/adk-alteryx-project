@@ -43,9 +43,8 @@ if USE_VERTEX_AI:
         sys.exit(1)
     # When using Vertex AI, configure_gemini is typically called without project/location
     # as these are picked up from the environment (e.g., gcloud auth application-default login)
-    # or passed directly to GenerativeModel if an older library version requires it.
     # For current versions, just ensuring the environment is authenticated is key.
-    configure_gemini() # Removed project=PROJECT_ID, location=LOCATION
+    configure_gemini()
     logger.info(f"Gemini configured globally for Vertex AI. Ensure 'gcloud auth application-default login' is run for Project={PROJECT_ID}, Location={LOCATION}")
 else:
     if not API_KEY:
@@ -58,7 +57,7 @@ else:
 # --- Define XMLConverterAgent ---
 # This agent handles the core logic for XML to SQL conversion
 class XMLConverterAgent(Agent): # Changed to inherit from Agent
-    def __init__(self): # Removed **kwargs
+    def __init__(self):
         # Pass name and description directly to super().__init__
         super().__init__(
             name="XMLConverterAgent",
@@ -129,7 +128,7 @@ class XMLConverterAgent(Agent): # Changed to inherit from Agent
 # --- Define ChatbotAgent ---
 # This agent is the user-facing interface and orchestrates the call to XMLConverterAgent.
 class ChatbotAgent(Agent): # Changed to inherit from Agent
-    def __init__(self): # Removed **kwargs
+    def __init__(self):
         # Pass name and description directly to super().__init__
         super().__init__(
             name="ChatbotAgent",
@@ -139,9 +138,8 @@ class ChatbotAgent(Agent): # Changed to inherit from Agent
         self.model = GenerativeModel(GEMINI_MODEL_NAME)
         logger.info("ChatbotAgent initialized.")
 
-        # Register the tool that calls the XMLConverterAgent
-        # Note: With Agent (not LlmAgent), tool calling needs to be explicitly managed in the run method
-        self.add_tool(self.convert_alteryx_to_sql_tool) 
+        # Removed: self.add_tool(self.convert_alteryx_to_sql_tool)
+        # Tool invocation will be handled explicitly in the run method.
 
     async def run(self, context): # Agent's run method
         user_message = context.get_message_text()
