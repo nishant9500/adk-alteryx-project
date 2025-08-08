@@ -1,0 +1,47 @@
+<AlteryxWorkflow>
+  <Nodes>
+    <Node ToolID="1">
+      <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileInput.DbFileInput">
+        <ToolMacro/>
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <File Format="23" FieldFormat="0">c:\data\input_sales.csv</File>
+          <TableStyle>
+            <Table>
+              <Name>Query</Name>
+              <Field name="OrderID" type="V_String"/>
+              <Field name="Customer" type="V_String"/>
+              <Field name="Amount" type="Double"/>
+            </Table>
+          </TableStyle>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name/>
+          <DefaultAnnotationText>input_sales.csv</DefaultAnnotationText>
+          <AnnotationText/>
+        </Annotation>
+      </Properties>
+      < incomingConnections>
+        <Connection name="Input" FlowDecimalPrecision="18" Origin="Output">
+          <Properties/>
+        </Connection>
+      </incomingConnections>
+    </Node>
+    <Node ToolID="2">
+        <GuiSettings Plugin="AlteryxBasePluginsGui.Filter.Filter">
+            <ToolMacro/>
+        </GuiSettings>
+        <Properties>
+            <Configuration>
+                <Expression>[Amount] > 100</Expression>
+            </Configuration>
+        </Properties>
+        <IncomingConnections>
+            <Connection name="Input" FlowDecimalPrecision="18" Origin="Output">
+                <Properties/>
+            </Connection>
+        </IncomingConnections>
+    </Node>
+  </Nodes>
+</AlteryxWorkflow>
